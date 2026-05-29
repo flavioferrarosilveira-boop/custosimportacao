@@ -10,6 +10,16 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// Fallback: se o XLSX não carregar do primeiro CDN, tentar o segundo
+window.addEventListener('DOMContentLoaded', function(){
+  if(typeof XLSX === 'undefined'){
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    document.head.appendChild(s);
+  }
+});
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
 <style>
 :root{
@@ -439,6 +449,7 @@ body{font-family:var(--font-body);background:var(--gray-100);color:var(--gray-70
     </a>
     <div class="header-right">
       <button class="btn-ghost" onclick="abrirManual()" style="background:rgba(201,146,42,.15);border-color:rgba(201,146,42,.35);color:var(--gold-lt)"><i class="ti ti-book-2"></i> Manual</button>
+      <button class="btn-ghost" onclick="abrirManualCalculos()" style="background:rgba(27,95,168,.15);border-color:rgba(27,95,168,.35);color:#7EC4F8"><i class="ti ti-math-function"></i> Cálculos</button>
       <div class="ref-wrap">
         <label>REF</label>
         <input type="text" id="refNum" placeholder="IMP-AAAAMM-NNN">
@@ -595,7 +606,7 @@ body{font-family:var(--font-body);background:var(--gray-100);color:var(--gray-70
     <button class="tab-btn" onclick="setTab('desp')" role="tab"><i class="ti ti-receipt"></i> <span>Despesas</span></button>
     <button class="tab-btn" onclick="setTab('result')" role="tab"><i class="ti ti-calculator"></i> <span>Custo Detalhado</span></button>
     <button class="tab-btn" onclick="setTab('final')" role="tab"><i class="ti ti-file-invoice"></i> <span>Custo Final</span></button>
-    <button class="tab-btn" onclick="setTab('reforma')" role="tab" style="position:relative"><i class="ti ti-refresh-alert" style="color:var(--gold-lt)"></i> <span>Reforma Trib.</span><span style="position:absolute;top:-4px;right:-4px;background:var(--gold);color:#fff;font-size:.5rem;font-weight:700;padding:1px 4px;border-radius:6px;letter-spacing:.04em">NOVO</span></button>
+    <button class="tab-btn" onclick="setTab('reforma')" role="tab"><i class="ti ti-refresh-alert" style="color:var(--gold-lt)"></i> <span>Reforma Tributária</span></button>
     <button class="tab-btn" onclick="setTab('graficos')" role="tab"><i class="ti ti-chart-pie"></i> <span>Gráficos</span></button>
   </nav>
 
@@ -1960,7 +1971,7 @@ body{font-family:var(--font-body);background:var(--gray-100);color:var(--gray-70
       <div class="card-title"><i class="ti ti-scale" style="color:var(--gold)"></i> Regimes Tributários
         <span style="font-size:.65rem;font-weight:400;color:var(--gray-400);text-transform:none;letter-spacing:0;margin-left:6px">— aplicado a todos os itens da carga</span>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem">
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:.75rem">
 
         <!-- II -->
         <div class="regime-col" style="border-left-color:#1B5FA8">
@@ -2035,6 +2046,19 @@ body{font-family:var(--font-body);background:var(--gray-100);color:var(--gray-70
           </select>
           <div class="regime-badge" id="badge-icms">Integral</div>
           <div class="regime-info" id="info-icms"></div>
+        </div>
+
+        <!-- AFRMM -->
+        <div class="regime-col" style="border-left-color:#8B4513">
+          <div class="regime-label" style="color:#8B4513"><i class="ti ti-ship"></i> AFRMM</div>
+          <div class="regime-sub">Adicional Frete Marinha Mercante</div>
+          <select id="reg-afrmm" class="regime-sel" onchange="aplicarRegimeAfrmm(this.value)">
+            <option value="integral">Integral (8%)</option>
+            <option value="suspensao">Suspensão</option>
+            <option value="isencao">Isenção</option>
+          </select>
+          <div class="regime-badge" id="badge-afrmm">Integral</div>
+          <div class="regime-info" id="info-afrmm" style="font-size:.6rem;color:var(--gray-500)"></div>
         </div>
 
       </div>
@@ -2315,7 +2339,7 @@ body{font-family:var(--font-body);background:var(--gray-100);color:var(--gray-70
     <div class="btn-row">
       <button class="btn-pdf" onclick="gerarPDF()"><i class="ti ti-file-type-pdf"></i> Gerar PDF</button>
       <button class="btn-excel" onclick="gerarExcel()"><i class="ti ti-file-spreadsheet"></i> Exportar Excel</button>
-      <button class="btn-secondary" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
+      <button class="btn-secondary" onclick="imprimirPaginaCorrente()"><i class="ti ti-printer"></i> Imprimir</button>
     </div>
 
   </div>
@@ -2332,7 +2356,7 @@ body{font-family:var(--font-body);background:var(--gray-100);color:var(--gray-70
       <div style="display:flex;gap:8px">
         <button class="btn-pdf" onclick="gerarPDFFinal()"><i class="ti ti-file-type-pdf"></i> Gerar PDF</button>
         <button class="btn-excel" onclick="gerarExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
-        <button class="btn-secondary" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
+        <button class="btn-secondary" onclick="imprimirPaginaCorrente()"><i class="ti ti-printer"></i> Imprimir</button>
       </div>
     </div>
 
@@ -2355,7 +2379,8 @@ body{font-family:var(--font-body);background:var(--gray-100);color:var(--gray-70
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn-pdf" onclick="gerarPDFReforma()"><i class="ti ti-file-type-pdf"></i> Gerar PDF</button>
-        <button class="btn-secondary" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
+        <button class="btn-excel" onclick="gerarExcelReforma()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+        <button class="btn-secondary" onclick="imprimirPaginaCorrente()"><i class="ti ti-printer"></i> Imprimir</button>
       </div>
     </div>
 
@@ -3897,7 +3922,9 @@ function calcImpostosItem(cifBRL, freteBRL, ii_p, ipi_p, pis_p, cof_p, icms_p, i
   const COF = cifBRL * (cof_p / 100);
 
   // AFRMM — base: frete BRL do item × 8% (só marítimo) — Lei 10.893/2004
-  const AFRMM = isMaritimo ? freteBRL * 0.08 : 0;
+  // Respeita regime: integral=8%, suspensão/isenção=0%
+  const afrmmAtivo = (typeof afrmmRegime !== 'undefined') ? afrmmRegime : 'integral';
+  const AFRMM = (isMaritimo && afrmmAtivo === 'integral') ? freteBRL * 0.08 : 0;
 
   // DUIMP rateada — Portaria ME 4.131/2021 + IN RFB 2.024/2021
   const DUIMP = duimpItem || 0;
@@ -5201,6 +5228,26 @@ const REGIME_INFO = {
   nao_incidencia:'Não ocorrência do fato gerador',
 };
 
+const REGIME_INFO_AFRMM = {
+  integral: 'Lei 10.893/2004 — 8% s/ frete marítimo',
+  suspensao:'Drawback suspensão (Dec. 6.759/2009 art. 383) · RECOF',
+  isencao:  'Carga própria, cabotagem, acordos internacionais',
+};
+
+// Controla se AFRMM está suspenso/isento
+let afrmmRegime = 'integral';
+
+function aplicarRegimeAfrmm(regime){
+  afrmmRegime = regime;
+  const badge = document.getElementById('badge-afrmm');
+  const info  = document.getElementById('info-afrmm');
+  const RLBL  = {integral:'Integral (8%)', suspensao:'Suspensão', isencao:'Isenção'};
+  const RCLS  = {integral:'integral', suspensao:'suspensao', isencao:'isencao'};
+  if(badge){ badge.textContent = RLBL[regime]||regime; badge.className='regime-badge '+(RCLS[regime]||''); }
+  if(info)  info.textContent = REGIME_INFO_AFRMM[regime]||'';
+  calc();
+}
+
 const REGIME_CORES = {
   integral:'integral', reducao:'reducao', suspensao:'suspensao',
   isencao:'isencao', nao_incidencia:'nao_incidencia'
@@ -5267,6 +5314,181 @@ function resetRegimeOrig(i, campo){
 // ══════════════════════════════════════════════════════════════════
 // MANUAL DE PREENCHIMENTO — ImportCalc Brasil
 // ══════════════════════════════════════════════════════════════════
+function abrirManualCalculos(){
+  const win = window.open('','_blank','width=1000,height=800,scrollbars=yes');
+  if(!win){ alert('Permita pop-ups para abrir o Manual de Cálculos.'); return; }
+  win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Manual de Cálculos — ImportCalc Brasil</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;color:#1a1a1a;background:#f0f2f5;padding:24px;line-height:1.6}
+  .page{background:#fff;max-width:880px;margin:0 auto;border-radius:10px;box-shadow:0 2px 24px rgba(0,0,0,.1);overflow:hidden}
+  .hdr{background:linear-gradient(135deg,#0B1D35,#1a3a6a);color:#fff;padding:28px 36px}
+  .logo{font-family:Georgia,serif;font-size:22px;font-weight:700}.logo span{color:#C9922A}
+  .sub{font-size:12px;color:rgba(255,255,255,.55);margin-top:4px;letter-spacing:.05em;text-transform:uppercase}
+  .content{padding:28px 36px}
+  .sec{margin-bottom:30px;scroll-margin-top:20px}
+  .sec-t{font-size:16px;font-weight:700;color:#0B1D35;border-bottom:2px solid #0B1D35;padding-bottom:8px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .sec-n{background:#0B1D35;color:#fff;font-size:12px;border-radius:6px;padding:3px 9px}
+  .formula{background:#0B1D35;color:#E8E8E8;font-family:'Consolas','Courier New',monospace;font-size:13px;padding:12px 16px;border-radius:8px;margin:10px 0;overflow-x:auto;line-height:1.7}
+  .formula b{color:#E8B44A}
+  .formula .op{color:#7EC4F8}
+  .desc{margin:8px 0;color:#444}
+  .leg{background:#f7f8fa;border-left:3px solid #C9922A;padding:10px 14px;border-radius:6px;margin:10px 0;font-size:12px}
+  .leg b{color:#0B1D35}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+  th{background:#0B1D35;color:#fff;padding:7px 10px;text-align:left;font-size:11px}
+  td{padding:6px 10px;border-bottom:1px solid #eee}
+  tr:nth-child(even) td{background:#fafafa}
+  .ex{background:#eafaf1;border-radius:8px;padding:12px 16px;margin:12px 0;border-left:3px solid #1A7A4A;font-size:12px}
+  .ex-t{font-weight:700;color:#1A5631;margin-bottom:6px;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
+  .note{font-size:11px;color:#888;font-style:italic;margin-top:6px}
+  .toc{background:#f7f8fa;padding:16px 20px;border-radius:8px;margin-bottom:24px;font-size:12px}
+  .toc a{color:#1B5FA8;text-decoration:none;margin-right:14px;white-space:nowrap}
+  .toc a:hover{text-decoration:underline}
+  @media print{body{background:#fff;padding:0}.page{box-shadow:none}.no-print{display:none}}
+</style></head><body>
+<div class="page">
+<div class="hdr">
+  <div class="logo">Import<span>Calc</span> Brasil</div>
+  <div class="sub">Manual de Cálculos — Fórmulas e Metodologia</div>
+</div>
+<div class="content">
+
+<div class="toc no-print">
+  <strong>Índice:</strong>
+  <a href="#c1">1. Câmbio</a><a href="#c2">2. Valor Aduaneiro (CIF)</a><a href="#c3">3. II</a>
+  <a href="#c4">4. IPI</a><a href="#c5">5. PIS/COFINS</a><a href="#c6">6. AFRMM</a>
+  <a href="#c7">7. ICMS</a><a href="#c8">8. DUIMP</a><a href="#c9">9. Rateio</a>
+  <a href="#c10">10. Custo Total</a><a href="#c11">11. Reforma (CBS/IBS)</a>
+  <button onclick="window.print()" style="float:right;padding:5px 12px;background:#0B1D35;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px">🖨 Imprimir</button>
+</div>
+
+<div class="sec" id="c1">
+  <div class="sec-t"><span class="sec-n">1</span> Conversão de Câmbio</div>
+  <div class="desc">Cada valor em moeda estrangeira é convertido para reais multiplicando pela taxa de câmbio informada (R$ por unidade da moeda).</div>
+  <div class="formula"><b>Valor em BRL</b> <span class="op">=</span> Valor na moeda <span class="op">×</span> Taxa de câmbio</div>
+  <div class="ex"><div class="ex-t">Exemplo</div>USD 15.000,00 × 5,85 = <b>R$ 87.750,00</b></div>
+</div>
+
+<div class="sec" id="c2">
+  <div class="sec-t"><span class="sec-n">2</span> Valor Aduaneiro (CIF)</div>
+  <div class="desc">Base tributável de todos os impostos. Composição conforme o Incoterm e o Acordo de Valoração Aduaneira (Decreto 6.759/2009).</div>
+  <div class="formula"><b>CIF</b> <span class="op">=</span> Valor invoice <span class="op">+</span> Frete internacional <span class="op">+</span> Seguro internacional <span class="op">+</span> Frete interno origem <span class="op">−</span> Frete interno destino</div>
+  <div class="leg"><b>Incoterm define o que somar:</b> em <b>FOB</b>, o frete e seguro internacionais são somados; em <b>CIF</b>, já estão inclusos no valor invoice; em <b>EXW</b>, soma-se também o frete interno de origem.</div>
+  <div class="ex"><div class="ex-t">Exemplo (FOB)</div>Invoice R$ 234.000 + Frete R$ 7.020 + Seguro R$ 1.170 = <b>CIF R$ 242.190,00</b></div>
+</div>
+
+<div class="sec" id="c3">
+  <div class="sec-t"><span class="sec-n">3</span> Imposto de Importação (II)</div>
+  <div class="desc">Incide sobre o valor aduaneiro. Base legal: Art. 20 CTN · Dec.-Lei 37/1966 · TEC.</div>
+  <div class="formula"><b>II</b> <span class="op">=</span> CIF <span class="op">×</span> (alíquota II ÷ 100)</div>
+  <div class="ex"><div class="ex-t">Exemplo</div>CIF R$ 242.190 × 14% = <b>R$ 33.906,60</b></div>
+</div>
+
+<div class="sec" id="c4">
+  <div class="sec-t"><span class="sec-n">4</span> IPI — Imposto sobre Produtos Industrializados</div>
+  <div class="desc">Incide sobre o valor aduaneiro acrescido do II. Base legal: Art. 47 CTN · Dec. 11.158/2022 (TIPI).</div>
+  <div class="formula"><b>IPI</b> <span class="op">=</span> (CIF <span class="op">+</span> II) <span class="op">×</span> (alíquota IPI ÷ 100)</div>
+  <div class="ex"><div class="ex-t">Exemplo</div>(R$ 242.190 + R$ 33.906,60) × 10% = <b>R$ 27.609,66</b></div>
+</div>
+
+<div class="sec" id="c5">
+  <div class="sec-t"><span class="sec-n">5</span> PIS-Importação e COFINS-Importação</div>
+  <div class="desc">Incidem sobre o valor aduaneiro. Base legal: Lei 10.865/2004 art. 7º I. Alíquotas padrão não-cumulativo: PIS 2,10% · COFINS 9,65%.</div>
+  <div class="formula"><b>PIS</b> <span class="op">=</span> CIF <span class="op">×</span> (alíquota PIS ÷ 100)
+<b>COFINS</b> <span class="op">=</span> CIF <span class="op">×</span> (alíquota COFINS ÷ 100)</div>
+  <div class="ex"><div class="ex-t">Exemplo</div>PIS: R$ 242.190 × 2,10% = <b>R$ 5.085,99</b><br>COFINS: R$ 242.190 × 9,65% = <b>R$ 23.371,34</b></div>
+</div>
+
+<div class="sec" id="c6">
+  <div class="sec-t"><span class="sec-n">6</span> AFRMM — Adicional ao Frete para Renovação da Marinha Mercante</div>
+  <div class="desc">Incide apenas sobre o frete marítimo internacional. Base legal: Lei 10.893/2004 art. 6º. Alíquota 8%.</div>
+  <div class="formula"><b>AFRMM</b> <span class="op">=</span> Frete marítimo (BRL) <span class="op">×</span> 8%</div>
+  <div class="leg"><b>Regimes:</b> Integral (8%) · Suspensão (Drawback/RECOF → 0%) · Isenção (cabotagem, carga própria → 0%).</div>
+  <div class="ex"><div class="ex-t">Exemplo</div>Frete R$ 7.020 × 8% = <b>R$ 561,60</b></div>
+</div>
+
+<div class="sec" id="c7">
+  <div class="sec-t"><span class="sec-n">7</span> ICMS — Cálculo "por dentro"</div>
+  <div class="desc">O ICMS integra a própria base de cálculo (cálculo por dentro). Base legal: LC 87/1996 art. 13 §1º II "a".</div>
+  <div class="formula"><span style="color:#999">// Soma de todos os tributos e o CIF antes do ICMS</span>
+<b>Soma</b> <span class="op">=</span> CIF <span class="op">+</span> II <span class="op">+</span> IPI <span class="op">+</span> PIS <span class="op">+</span> COFINS <span class="op">+</span> AFRMM <span class="op">+</span> DUIMP
+
+<span style="color:#999">// Base "por dentro": divide por (1 − alíquota)</span>
+<b>Base ICMS</b> <span class="op">=</span> Soma <span class="op">÷</span> (1 <span class="op">−</span> alíquota ICMS)
+
+<b>ICMS</b> <span class="op">=</span> Base ICMS <span class="op">×</span> alíquota ICMS</div>
+  <div class="leg"><b>Por que "por dentro"?</b> O ICMS incide sobre um total que já inclui o próprio ICMS. Resolvendo a equação algebricamente, divide-se a soma dos demais valores por (1 − alíquota).</div>
+  <div class="ex"><div class="ex-t">Exemplo (ICMS 18%)</div>Soma = R$ 271.350<br>Base = 271.350 ÷ (1 − 0,18) = 271.350 ÷ 0,82 = R$ 330.914,63<br>ICMS = 330.914,63 × 18% = <b>R$ 59.564,63</b></div>
+</div>
+
+<div class="sec" id="c8">
+  <div class="sec-t"><span class="sec-n">8</span> Taxa DUIMP / SISCOMEX</div>
+  <div class="desc">Taxa de utilização do Siscomex por adição da declaração. Base legal: Portaria ME 4.131/2021. Valor escalonado por faixas.</div>
+  <div class="formula"><b>Taxa</b> <span class="op">=</span> R$ 115,67 (1ª adição) <span class="op">+</span> valor escalonado por adições seguintes</div>
+  <div class="note">As faixas seguem a tabela oficial: até 2 adições, de 3 a 5, de 6 a 10, etc., com valores decrescentes por adição.</div>
+</div>
+
+<div class="sec" id="c9">
+  <div class="sec-t"><span class="sec-n">9</span> Rateio de Frete, Seguro e DUIMP por Item</div>
+  <div class="desc">Quando há múltiplos itens, frete/seguro/DUIMP são distribuídos proporcionalmente. Critério 1: peso líquido (se todos preenchidos). Critério 2: valor FOB.</div>
+  <div class="formula"><span style="color:#999">// Critério 1 — por peso líquido</span>
+<b>Fator</b> <span class="op">=</span> (peso líq. do item) <span class="op">÷</span> (peso líq. total)
+
+<span style="color:#999">// Critério 2 — por valor FOB (regra de três)</span>
+<b>Fator</b> <span class="op">=</span> (FOB do item) <span class="op">÷</span> (FOB total)
+
+<b>Frete do item</b> <span class="op">=</span> Frete total <span class="op">×</span> Fator</div>
+</div>
+
+<div class="sec" id="c10">
+  <div class="sec-t"><span class="sec-n">10</span> Custo Total da Importação (Landed Cost)</div>
+  <div class="formula"><b>Total Tributos</b> <span class="op">=</span> II <span class="op">+</span> IPI <span class="op">+</span> PIS <span class="op">+</span> COFINS <span class="op">+</span> AFRMM <span class="op">+</span> ICMS <span class="op">+</span> DUIMP
+
+<b>Custo Total</b> <span class="op">=</span> CIF <span class="op">+</span> Total Tributos <span class="op">+</span> Despesas operacionais
+
+<b>Custo de Importação (%)</b> <span class="op">=</span> (Total Tributos <span class="op">+</span> Despesas) <span class="op">÷</span> Valor invoice <span class="op">×</span> 100</div>
+  <div class="ex"><div class="ex-t">Exemplo</div>CIF R$ 242.190 + Tributos R$ 66.170 + Despesas R$ 6.800 = <b>R$ 315.160,00</b></div>
+</div>
+
+<div class="sec" id="c11">
+  <div class="sec-t"><span class="sec-n">11</span> Reforma Tributária — CBS e IBS</div>
+  <div class="desc">Sistema novo (EC 132/2023 · LC 214/2025). CBS substitui PIS+COFINS; IBS substitui ICMS+ISS. <b>Diferença crucial:</b> CBS e IBS são calculados <b>"por fora"</b> — não integram a própria base (art. 12 LC 214/2025).</div>
+  <div class="formula"><span style="color:#999">// Base de cálculo — LC 214/2025 arts. 12, 13, 69-71</span>
+<b>Base CBS/IBS</b> <span class="op">=</span> CIF <span class="op">+</span> II <span class="op">+</span> IPI <span class="op">+</span> AFRMM <span class="op">+</span> DUIMP
+
+<span style="color:#999">// CBS e IBS por fora (sobre a base, sem auto-inclusão)</span>
+<b>CBS</b> <span class="op">=</span> Base <span class="op">×</span> (alíquota CBS ÷ 100)
+<b>IBS</b> <span class="op">=</span> Base <span class="op">×</span> (alíquota IBS ÷ 100)
+
+<b>Total (Reforma)</b> <span class="op">=</span> II <span class="op">+</span> IPI <span class="op">+</span> AFRMM <span class="op">+</span> DUIMP <span class="op">+</span> CBS <span class="op">+</span> IBS</div>
+  <div class="leg"><b>O que muda:</b><br>• PIS + COFINS → <b>CBS</b> (~9,9%)<br>• ICMS → <b>IBS</b> (~17,7%) — agora <b>por fora</b>, não mais "por dentro"<br>• IPI → zerado a partir de 2027 (exceto Zona Franca de Manaus)<br>• II e AFRMM → mantidos sem alteração<br>• Alíquota combinada de referência estimada: ~27,97%</div>
+  <table>
+    <tr><th>Fase</th><th>CBS</th><th>IBS</th><th>IPI</th></tr>
+    <tr><td>2025 (atual)</td><td>—</td><td>—</td><td>cheio</td></tr>
+    <tr><td>2026 (teste)</td><td>0,9%</td><td>0,1%</td><td>cheio</td></tr>
+    <tr><td>2027</td><td>25% da plena</td><td>25% da plena</td><td>zerado</td></tr>
+    <tr><td>2029</td><td>50%</td><td>50%</td><td>zerado</td></tr>
+    <tr><td>2030</td><td>75%</td><td>75%</td><td>zerado</td></tr>
+    <tr><td>2033 (pleno)</td><td>100% (~9,9%)</td><td>100% (~17,7%)</td><td>zerado</td></tr>
+  </table>
+  <div class="ex"><div class="ex-t">Exemplo (fase plena 2033)</div>Base = CIF 242.190 + II 0 + IPI 0 + AFRMM 561,60 + DUIMP 154,23 = R$ 242.905,83<br>CBS = 242.905,83 × 9,9% = <b>R$ 24.047,68</b><br>IBS = 242.905,83 × 17,7% = <b>R$ 42.994,33</b></div>
+  <div class="note">Alíquotas de CBS e IBS ainda sujeitas à definição final em lei. Os valores são estimativas configuráveis no painel da aba Reforma Tributária.</div>
+</div>
+
+<div style="font-size:10px;color:#aaa;text-align:center;margin-top:24px;padding-top:14px;border-top:1px solid #eee;line-height:1.8">
+  <strong>ImportCalc Brasil</strong> — Manual de Cálculos<br>
+  Fundamentos: Decreto 6.759/2009 · CTN · Lei 10.865/2004 · Lei 10.893/2004 · LC 87/1996 · Portaria ME 4.131/2021 · EC 132/2023 · LC 214/2025<br>
+  Documento técnico de caráter estimativo e gerencial.
+</div>
+
+</div></div>
+</body></html>`);
+  win.document.close();
+}
+
 function abrirManual(){
   const win = window.open('','_blank','width=1000,height=800,scrollbars=yes');
 
@@ -5382,6 +5604,7 @@ function abrirManual(){
   <a href="#sec5"><span class="toc-num">5</span> Custo Final</a>
   <a href="#sec6"><span class="toc-num">6</span> Gráficos</a>
   <a href="#sec7"><span class="toc-num">7</span> Exemplo Prático</a>
+  <a href="#sec8"><span class="toc-num">8</span> Reforma Tributária</a>
   <div style="margin-top:14px">
     <div class="toc-title">Legenda</div>
     <div class="legend-item"><span class="badge badge-req">*</span> Obrigatório</div>
@@ -5741,6 +5964,55 @@ function abrirManual(){
   </div>
 </div>
 
+<!-- ══ 8. REFORMA TRIBUTÁRIA ══ -->
+<div class="section" id="sec8">
+  <div class="sec-hdr"><span class="sec-num">8</span><span class="sec-ttl">Aba Reforma Tributária</span></div>
+  <p class="sec-desc">Simula o impacto da Reforma Tributária (EC 132/2023) na importação, substituindo PIS/COFINS pelo CBS e ICMS pelo IBS, com comparativo lado a lado com o sistema atual.</p>
+
+  <div class="alert alert-tip">
+    <span class="alert-icon">⚡</span>
+    <div><strong>Vigência:</strong> Sistema novo pleno em 2033. Até lá, período de transição 2026-2032 com coexistência gradual dos dois sistemas.</div>
+  </div>
+
+  <table class="fields-tbl">
+    <thead><tr><th>Parâmetro</th><th>Padrão</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td>CBS %</td><td>9,9%</td><td>Contribuição sobre Bens e Serviços — substitui PIS (2,10%) + COFINS (9,65%). Base: CIF</td></tr>
+      <tr><td>IBS %</td><td>17,7%</td><td>Imposto sobre Bens e Serviços — substitui ICMS. Calculado por fora sobre (CIF+II+IPI+encargos) — LC 214/2025 arts. 12-13</td></tr>
+      <tr><td>IPI %</td><td>0%</td><td>Zerado a partir de 2027, exceto produtos da Zona Franca de Manaus</td></tr>
+      <tr><td>II %</td><td>Do item</td><td>Mantido inalterado pela Reforma (tributo federal externo ao escopo da EC 132)</td></tr>
+      <tr><td>AFRMM</td><td>Mantido</td><td>Mantido inalterado — Lei 10.893/2004 não está no escopo da EC 132</td></tr>
+      <tr><td>DUIMP</td><td>Mantido</td><td>Taxa administrativa — não alterada pela Reforma</td></tr>
+    </tbody>
+  </table>
+
+  <div class="example">
+    <div class="example-title">📅 Fases de Transição</div>
+    <div class="example-row"><span>2026</span><span><strong>Fase Teste:</strong> CBS 0,9% + IBS 0,1% (Art. 124 ADCT)</span></div>
+    <div class="example-row"><span>2027</span><span><strong>IPI zerado</strong> (exceto ZFM) · CBS+IBS em 25%</span></div>
+    <div class="example-row"><span>2029</span><span>CBS+IBS em 50% · PIS/COFINS/ICMS em 50%</span></div>
+    <div class="example-row"><span>2030</span><span>CBS+IBS em 75% · PIS/COFINS/ICMS em 25%</span></div>
+    <div class="example-row"><span>2033</span><span><strong>Sistema pleno</strong> — PIS, COFINS, ICMS e ISS extintos</span></div>
+  </div>
+
+  <div class="alert alert-ok" style="margin-top:12px">
+    <span class="alert-icon">📊</span>
+    <div>A aba exibe três seções: <strong>Tributos da Reforma</strong> (com status MANTIDO/NOVO/ZERADO), <strong>Comparativo Atual × Reforma</strong> (tabela lado a lado com diferença em R$ e %) e <strong>Gráficos comparativos</strong> integrados no relatório. Botão <strong>Gerar PDF</strong> exporta o relatório da reforma.</div>
+  </div>
+
+  <div style="margin-top:12px">
+    <div style="font-size:10.5px;font-weight:600;color:#555;margin-bottom:6px">Regime AFRMM na aba Carga:</div>
+    <table class="fields-tbl">
+      <thead><tr><th>Regime</th><th>Fundamento</th></tr></thead>
+      <tbody>
+        <tr><td>Integral (8%)</td><td>Lei 10.893/2004 — regime padrão para importações marítimas</td></tr>
+        <tr><td>Suspensão</td><td>Drawback suspensão (Dec. 6.759/2009 art. 383) · RECOF</td></tr>
+        <tr><td>Isenção</td><td>Carga própria, cabotagem ou acordos internacionais específicos</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 </div><!-- /content -->
 </div><!-- /layout -->
 </div><!-- /page -->
@@ -5824,7 +6096,7 @@ function calcularSeguroPct(){
 // IBS = Imposto sobre Bens e Serviços (substitui ICMS+ISS)
 // II e AFRMM: mantidos sem alteração
 // IPI: zerado em 2027 (exceto ZFM)
-// Cálculo IBS: por dentro (mesma lógica do ICMS — LC 87/1996)
+// Cálculo IBS: por fora sobre base (CIF+II+IPI+encargos) — LC 214/2025 arts. 12-13, 69-71
 // Cálculo CBS: sobre o CIF (mesma base PIS/COFINS atual)
 // ══════════════════════════════════════════════════════════════════
 
@@ -5877,24 +6149,29 @@ function calcImpostosReforma(cifBRL, freteBRL, ii_p, ipi_p_orig, isM, duimpItem)
   // IPI: zerado em 2027+ ou conforme campo
   const IPI = (cifBRL + II) * (ipi_p / 100);
 
-  // CBS: sobre o CIF (substitui PIS+COFINS — mesma base Art. 7º Lei 10.865/2004)
-  const CBS = cifBRL * (cbs_p / 100);
-
-  // AFRMM: mantido se marítimo
-  const AFRMM = isM ? freteBRL * 0.08 : 0;
+  // AFRMM: mantido se marítimo (suspenso/isento se regime especial)
+  const AFRMM = (isM && (typeof afrmmRegime==='undefined'||afrmmRegime==='integral')) ? freteBRL * 0.08 : 0;
 
   // DUIMP: mantido
   const DUIMP = duimpItem || 0;
 
-  // IBS: por dentro (substitui ICMS — mesma lógica LC 87/1996)
-  const ibs_d     = ibs_p > 0 && ibs_p < 100 ? ibs_p / 100 : 0;
-  const somaIBS   = cifBRL + II + IPI + CBS + AFRMM + DUIMP;
-  const BASE_IBS  = ibs_d > 0 ? somaIBS / (1 - ibs_d) : 0;
-  const IBS       = BASE_IBS * ibs_d;
+  // ── Base de cálculo CBS/IBS na importação — LC 214/2025 arts. 12, 13, 69-71 ──
+  // Base = valor aduaneiro (CIF) + II + IPI + AFRMM + DUIMP + demais encargos
+  //        até a liberação do bem. CBS e IBS NÃO integram a própria base (Art. 12).
+  const BASE_REF = cifBRL + II + IPI + AFRMM + DUIMP;
+
+  // CBS: por fora — Art. 12 LC 214/2025 (substitui PIS+COFINS)
+  const CBS = BASE_REF * (cbs_p / 100);
+
+  // IBS: por fora — Art. 12 LC 214/2025 (substitui ICMS+ISS)
+  // Diferente do ICMS antigo, IBS NÃO é cálculo "por dentro"
+  const IBS = BASE_REF * (ibs_p / 100);
+
+  const BASE_IBS = BASE_REF; // exposto para exibição
 
   const total = II + IPI + CBS + AFRMM + IBS + DUIMP;
 
-  return {II, IPI, CBS, AFRMM, IBS, DUIMP, BASE_IBS, total,
+  return {II, IPI, CBS, AFRMM, IBS, DUIMP, BASE_IBS, BASE_REF, total,
           cbs_p, ibs_p, ipi_p, ii_pef};
 }
 
@@ -6050,7 +6327,7 @@ function renderReforma(){
             <td class="nr" style="font-weight:600">${pctFmt(cbs_p)}</td>
             <td class="nr" style="color:#C9922A;font-weight:600">${brl(totCBS)}</td>
             <td class="nr">${pctFmt((totCBS/LANDED_REF)*100)}</td>
-            <td class="nr" style="font-size:.67rem;color:var(--gray-400)">EC 132/2023 · Substitui PIS+COFINS</td>
+            <td class="nr" style="font-size:.67rem;color:var(--gray-400)">LC 214/2025 · Substitui PIS+COFINS</td>
           </tr>
           ${isM&&totAFRMM>0?`<tr>
             <td><strong style="color:#8B4513">AFRMM</strong></td>
@@ -6063,10 +6340,10 @@ function renderReforma(){
           <tr>
             <td><strong style="color:#BA7517">IBS — Imposto sobre Bens e Serviços</strong></td>
             <td><span style="background:#fef9e7;color:#9A6D00;font-size:.65rem;padding:2px 7px;border-radius:8px;font-weight:600">NOVO</span></td>
-            <td class="nr" style="font-weight:600">${pctFmt(ibs_p)} <span style="font-size:.65rem;color:var(--gray-400)">(por dentro)</span></td>
+            <td class="nr" style="font-weight:600">${pctFmt(ibs_p)} <span style="font-size:.65rem;color:var(--gray-400)">(por fora)</span></td>
             <td class="nr" style="color:#BA7517;font-weight:600">${brl(totIBS)}</td>
             <td class="nr">${pctFmt((totIBS/LANDED_REF)*100)}</td>
-            <td class="nr" style="font-size:.67rem;color:var(--gray-400)">EC 132/2023 · Substitui ICMS+ISS</td>
+            <td class="nr" style="font-size:.67rem;color:var(--gray-400)">LC 214/2025 · Substitui ICMS+ISS</td>
           </tr>
           ${totDUMP>0?`<tr>
             <td><strong style="color:#888">Taxa DUIMP/SISCOMEX</strong></td>
@@ -6209,13 +6486,25 @@ function renderReforma(){
           ${totIPI>0?`<tr class="sub"><td>  IPI</td><td class="nr">${brl(totIPI)}</td><td class="nr">${pctFmt((totIPI/LANDED_REF)*100)}</td><td class="nr"><span style="font-size:.65rem;background:#fff3cd;color:#9A6D00;padding:1px 5px;border-radius:6px">REDUZIDO</span></td></tr>`:`<tr class="sub" style="opacity:.4"><td>  IPI</td><td class="nr">R$ 0,00</td><td class="nr">0%</td><td class="nr"><span style="font-size:.65rem">ZERADO</span></td></tr>`}
           <tr class="sub"><td>  CBS <span style="font-size:.68rem;color:var(--gray-400)">(ex-PIS/COFINS)</span></td><td class="nr">${brl(totCBS)}</td><td class="nr">${pctFmt((totCBS/LANDED_REF)*100)}</td><td class="nr"><span style="font-size:.65rem;background:#fef9e7;color:#9A6D00;padding:1px 5px;border-radius:6px">NOVO</span></td></tr>
           ${isM&&totAFRMM>0?`<tr class="sub"><td>  AFRMM</td><td class="nr">${brl(totAFRMM)}</td><td class="nr">${pctFmt((totAFRMM/LANDED_REF)*100)}</td><td class="nr"><span style="font-size:.65rem;background:#eafaf1;color:#1A7A4A;padding:1px 5px;border-radius:6px">MANTIDO</span></td></tr>`:''}
-          <tr class="sub"><td>  IBS <span style="font-size:.68rem;color:var(--gray-400)">(ex-ICMS, por dentro)</span></td><td class="nr">${brl(totIBS)}</td><td class="nr">${pctFmt((totIBS/LANDED_REF)*100)}</td><td class="nr"><span style="font-size:.65rem;background:#fef9e7;color:#9A6D00;padding:1px 5px;border-radius:6px">NOVO</span></td></tr>
+          <tr class="sub"><td>  IBS <span style="font-size:.68rem;color:var(--gray-400)">(ex-ICMS, por fora)</span></td><td class="nr">${brl(totIBS)}</td><td class="nr">${pctFmt((totIBS/LANDED_REF)*100)}</td><td class="nr"><span style="font-size:.65rem;background:#fef9e7;color:#9A6D00;padding:1px 5px;border-radius:6px">NOVO</span></td></tr>
           ${totDUMP>0?`<tr class="sub"><td>  Taxa DUIMP</td><td class="nr">${brl(totDUMP)}</td><td class="nr">${pctFmt((totDUMP/LANDED_REF)*100)}</td><td class="nr"><span style="font-size:.65rem;background:#eafaf1;color:#1A7A4A;padding:1px 5px;border-radius:6px">MANTIDO</span></td></tr>`:''}
           <tr><td><strong>Total Tributos</strong></td><td class="nr" style="color:var(--orange);font-weight:700">${brl(totTrib)}</td><td class="nr">${pctFmt((totTrib/LANDED_REF)*100)}</td><td class="nr" style="font-size:.68rem;color:var(--gray-400)">Custo Imp.: ${pctFmt(INTERNACAO_REF)}%</td></tr>
           <tr><td>Total Despesas Operacionais</td><td class="nr" style="color:#4CA3E4;font-weight:600">${brl(LC.DESP)}</td><td class="nr">${pctFmt((LC.DESP/LANDED_REF)*100)}</td><td></td></tr>
           <tr class="grand"><td>= CUSTO TOTAL (REFORMA)</td><td class="nr">${brl(LANDED_REF)}</td><td class="nr">100,00%</td><td class="nr" style="font-size:.7rem;color:var(--gold-lt)">Landed Cost</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Gráfico: Custo Total por Fase de Transição -->
+    <div style="background:var(--gray-100);border-radius:var(--radius-md);padding:.75rem;margin:1.5rem 0">
+      <div style="font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-500);margin-bottom:.5rem">
+        <i class="ti ti-timeline"></i> Custo Total da Importação por Fase de Transição (2025 → 2033)
+        <span style="font-weight:400;text-transform:none;color:var(--gray-400);margin-left:6px">— EC 132/2023 · LC 214/2025</span>
+      </div>
+      <div style="position:relative;height:260px"><canvas id="ch-reforma-fases"></canvas></div>
+      <div style="font-size:.62rem;color:var(--gray-400);margin-top:.4rem;line-height:1.5">
+        Cada barra mostra o custo total estimado conforme a alíquota de CBS/IBS vigente em cada fase. Tributos calculados por fora sobre (CIF + II + IPI + encargos), conforme LC 214/2025 arts. 12-13.
+      </div>
     </div>
 
     <!-- Gráficos comparativos dentro do relatório -->
@@ -6250,20 +6539,109 @@ function gerarPDFReforma(){
   if(!LC.LANDED){ alert('Preencha os dados antes de gerar o PDF.'); return; }
   renderReforma();
   setTimeout(()=>{
-    const style = document.createElement('style');
-    style.id = '__print_reforma';
-    style.textContent = `@media print {
-      body > *:not(.app-wrap) { display:none!important; }
-      .app-wrap > *:not(#tab-reforma) { display:none!important; }
-      #tab-reforma { display:block!important; }
-      button { display:none!important; }
-      .card { display:none!important; }
-      .rel-page { box-shadow:none!important; border:none!important; }
-    }`;
-    document.head.appendChild(style);
-    window.print();
-    setTimeout(()=>{ const s=document.getElementById('__print_reforma'); if(s)s.remove(); }, 1000);
-  }, 300);
+    const ref = document.getElementById('refNum')?.value || '';
+    const win = abrirRelatorioEmJanela('reforma-corpo', 'Reforma Tributaria '+ref+' — ImportCalc Brasil');
+    if(win) setTimeout(()=>{ win.focus(); win.print(); }, 600);
+  }, 250);
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// IMPRESSÃO INTELIGENTE — imprime a aba corrente
+// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+// IMPRESSÃO/PDF EM JANELA NOVA — captura HTML renderizado de uma aba
+// ══════════════════════════════════════════════════════════════════
+function _cssRelatorio(){
+  return `
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,Arial,sans-serif;font-size:12px;color:#1a1a1a;background:#fff;padding:24px}
+  .rel-page{max-width:1000px;margin:0 auto}
+  .rel-header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:3px solid #0B1D35;margin-bottom:18px}
+  .rel-logo{font-family:Georgia,serif;font-size:22px;font-weight:700;color:#0B1D35}
+  .rel-logo span{color:#C9922A}
+  .rel-ref{text-align:right;font-size:11px;color:#888;line-height:1.7}
+  .rel-ref strong{font-size:13px;color:#0B1D35;display:block;font-family:monospace}
+  .rel-kpi-row{display:grid;gap:10px;margin-bottom:18px}
+  .rel-kpi{background:#f7f8fa;border-radius:6px;padding:10px 14px;border-left:3px solid #0B1D35}
+  .rel-kpi .kl{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#888;margin-bottom:3px}
+  .rel-kpi .kv{font-size:16px;font-weight:700;color:#0B1D35}
+  .rel-kpi .ks{font-size:9px;color:#aaa;margin-top:2px}
+  .rel-section{margin-bottom:20px}
+  .rel-section-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:#0B1D35;padding:6px 12px;border-radius:4px;margin-bottom:8px}
+  .rel-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px}
+  .rel-table thead th{background:#0B1D35;color:#fff;padding:6px 8px;text-align:left;font-size:9.5px;font-weight:600;text-transform:uppercase}
+  .rel-table thead th.nr{text-align:right}
+  .rel-table tbody td,.rel-table tfoot td{padding:5px 8px;border-bottom:1px solid #f0f0f0}
+  .rel-table td.nr,.rel-table th.nr{text-align:right}
+  .rel-table tbody tr:nth-child(even) td{background:#fafafa}
+  .rel-table tr.sub td{padding-left:18px;color:#555}
+  .rel-table tr.tot td{font-weight:700;background:#f0f4f8!important}
+  .rel-table tr.grand td{font-weight:700;background:#0B1D35!important;color:#fff;font-size:12px}
+  .rel-footer{font-size:9px;color:#aaa;text-align:center;margin-top:24px;padding-top:12px;border-top:1px solid #eee;line-height:1.8}
+  .trib-row,.trib-formula{font-size:11px;margin:3px 0}
+  canvas{max-width:100%!important;height:auto!important}
+  @media print{body{padding:0}.rel-page{max-width:100%}}
+  `;
+}
+
+function abrirRelatorioEmJanela(corpoId, titulo){
+  const corpo = document.getElementById(corpoId);
+  if(!corpo || !corpo.innerHTML.trim() || corpo.querySelector('.empty')){
+    alert('Preencha os dados da simulação antes de gerar o relatório.');
+    return null;
+  }
+  const win = window.open('','_blank','width=1100,height=800,scrollbars=yes');
+  if(!win){ alert('Permita pop-ups para gerar o relatório.'); return null; }
+  win.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'+
+    '<title>'+titulo+'</title>'+
+    '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">'+
+    '<style>'+_cssRelatorio()+'</style></head><body>'+
+    corpo.innerHTML+
+    '</body></html>');
+  win.document.close();
+  return win;
+}
+
+function imprimirPaginaCorrente(){
+  // Descobrir qual aba está visível
+  const abas = ['dados','itens','desp','result','final','reforma','graficos'];
+  const abaAtiva = abas.find(a=>{
+    const el = document.getElementById('tab-'+a);
+    return el && el.style.display !== 'none';
+  }) || 'final';
+
+  // Abas de relatório: imprimir via janela nova (layout limpo)
+  if(abaAtiva === 'final'){ renderCustoFinal(); setTimeout(()=>{ const w=abrirRelatorioEmJanela('custo-final-corpo','Custo Final — ImportCalc Brasil'); if(w) setTimeout(()=>{w.focus();w.print();},600); },250); return; }
+  if(abaAtiva === 'reforma'){ renderReforma(); setTimeout(()=>{ const w=abrirRelatorioEmJanela('reforma-corpo','Reforma Tributaria — ImportCalc Brasil'); if(w) setTimeout(()=>{w.focus();w.print();},600); },250); return; }
+
+  // Demais abas: impressão direta com CSS
+  const style = document.createElement('style');
+  style.id = '__print_corrente';
+  style.textContent = `@media print {
+    .site-header, .tabs-bar, .hero, .app-wrap > div[id^="tab-"]:not(#tab-${abaAtiva}) { display:none!important; }
+    #tab-${abaAtiva} { display:block!important; }
+    .btn-row, .btn-pdf, .btn-excel, .btn-secondary, button { display:none!important; }
+    .rel-page { box-shadow:none!important; border:none!important; padding:1rem!important; }
+    .card { break-inside:avoid; }
+  }`;
+  document.head.appendChild(style);
+  window.print();
+  setTimeout(()=>{ const s=document.getElementById('__print_corrente'); if(s)s.remove(); }, 1500);
+}
+
+function gerarPDFPaginaCorrente(){
+  // Descobrir aba ativa
+  const abas = ['dados','itens','desp','result','final','reforma','graficos'];
+  const abaAtiva = abas.find(a=>{
+    const el = document.getElementById('tab-'+a);
+    return el && el.style.display !== 'none';
+  });
+  // Redirecionar para função específica ou imprimir corrente
+  if(abaAtiva === 'final')   { gerarPDFFinal(); return; }
+  if(abaAtiva === 'reforma') { gerarPDFReforma(); return; }
+  if(abaAtiva === 'result')  { gerarPDF(); return; }
+  imprimirPaginaCorrente();
 }
 
 let LC = {};
@@ -6824,7 +7202,7 @@ function renderCharts(){
     {l:'IPI',    v:LC.IPI,   c:PAL.ipi},
     {l:'PIS',    v:LC.PIS,   c:PAL.pis},
     {l:'COFINS', v:LC.COF,   c:PAL.cof},
-    ...(isM&&LC.AFRMM>0?[{l:'AFRMM',v:LC.AFRMM,c:PAL.afrmm}]:[]),
+    ...(isM?[{l:(()=>{const r=typeof afrmmRegime!=='undefined'?afrmmRegime:'integral';return 'AFRMM'+(r!=='integral'?' ('+(r==='suspensao'?'Susp.':'Isen.')+')':'');})(),v:LC.AFRMM,c:PAL.afrmm}]:[]),
     {l:'ICMS',   v:LC.ICMS,  c:PAL.icms},
     ...(LC.SIS>0?[{l:'DUIMP', v:LC.SIS,  c:PAL.duimp}]:[]),
   ].filter(d=>d.v>0);
@@ -6855,7 +7233,7 @@ function renderCharts(){
     {l:'IPI',    v:(LC.IPI/LC.LANDED)*100,        c:PAL.ipi},
     {l:'PIS',    v:(LC.PIS/LC.LANDED)*100,        c:PAL.pis},
     {l:'COFINS', v:(LC.COF/LC.LANDED)*100,        c:PAL.cof},
-    ...(isM&&LC.AFRMM>0?[{l:'AFRMM',v:(LC.AFRMM/LC.LANDED)*100,c:PAL.afrmm}]:[]),
+    ...(isM?[{l:'AFRMM',v:(LC.AFRMM/LC.LANDED)*100,c:PAL.afrmm}]:[]),
     {l:'ICMS',   v:(LC.ICMS/LC.LANDED)*100,       c:PAL.icms},
     ...(LC.SIS>0?[{l:'DUIMP',v:(LC.SIS/LC.LANDED)*100,c:PAL.duimp}]:[]),
     {l:'Despesas',v:(LC.DESP/LC.LANDED)*100,      c:PAL.desp},
@@ -7177,6 +7555,96 @@ function renderChartsReforma(){
       <span style="display:inline-flex;align-items:center;gap:4px"><b style="width:10px;height:10px;border-radius:2px;background:#C9922A;display:inline-block"></b> Reforma: ${brl(totTrib_r)}</span>
       <span style="font-weight:700;color:${cor};margin-left:4px">${sinal}${brl(Math.abs(diffR))} (${sinal}${diffR!=0&&LC.LANDED>0?(diffR/LC.LANDED*100).toFixed(1)+'%':'0%'})</span>`;
   }
+
+  // ── Gráfico 3: Custo total por fase de transição ──
+  destroyChart('reforma-fases');
+  const cbsPleno = parseFloat(document.getElementById('ref-cbs')?.value)||9.9;
+  const ibsPleno = parseFloat(document.getElementById('ref-ibs')?.value)||17.7;
+  // Para o gráfico de fases usamos as alíquotas plenas de referência configuradas
+  // (na fase 'atual' o valor de ref-cbs pode ter sido alterado, então fixamos a referência plena padrão)
+  const CBS_PLENO_REF = 9.9, IBS_PLENO_REF = 17.7;
+
+  // Calcula custo total para uma combinação de alíquotas CBS/IBS/IPI
+  function custoFase(cbsP, ibsP, ipiP, usarSistemaAtual){
+    if(usarSistemaAtual){
+      // Sistema atual: usa os tributos já calculados em LC
+      return LC.LANDED;
+    }
+    let tot=0;
+    const calcUm=(cif,frete,ii_p,ipi_orig,isMm,dui)=>{
+      const II=cif*((ii_p||0)/100);
+      const IPI=(cif+II)*((ipiP)/100);
+      const AFRMM=(isMm&&(typeof afrmmRegime==='undefined'||afrmmRegime==='integral'))?frete*0.08:0;
+      const DUIMP=dui||0;
+      const BASE=cif+II+IPI+AFRMM+DUIMP;
+      const CBS=BASE*(cbsP/100);
+      const IBS=BASE*(ibsP/100);
+      return II+IPI+AFRMM+DUIMP+CBS+IBS;
+    };
+    if(itens.length>0){
+      itens.forEach(it=>{
+        const r=getRateioItem(it),a=alqItem(it),dui=calcDUIMP_item(it);
+        tot+=calcUm(r.cif,r.frete,a.ii_p,a.ipi_p,isM,dui);
+      });
+    } else {
+      const ii_pef=LC.CIF>0?(LC.II/LC.CIF)*100:0;
+      tot=calcUm(LC.CIF,LC.fr_brl||0,ii_pef,0,isM,LC.SIS||0);
+    }
+    return LC.CIF + tot + LC.DESP;
+  }
+
+  // Fases: alíquota como fração da plena (conforme transição EC 132/2023 / LC 214/2025)
+  const fasesGrafico = [
+    {lbl:'Atual\n(2025)',  atual:true},
+    {lbl:'2026\nTeste',    cbs:0.9,  ibs:0.1,  ipi:null},
+    {lbl:'2027\nIPI zero', cbs:CBS_PLENO_REF*0.25, ibs:IBS_PLENO_REF*0.25, ipi:0},
+    {lbl:'2028\n25%',      cbs:CBS_PLENO_REF*0.25, ibs:IBS_PLENO_REF*0.25, ipi:0},
+    {lbl:'2029\n50%',      cbs:CBS_PLENO_REF*0.50, ibs:IBS_PLENO_REF*0.50, ipi:0},
+    {lbl:'2030\n75%',      cbs:CBS_PLENO_REF*0.75, ibs:IBS_PLENO_REF*0.75, ipi:0},
+    {lbl:'2033\nPleno',    cbs:CBS_PLENO_REF,      ibs:IBS_PLENO_REF,      ipi:0},
+  ];
+
+  const fasesLabels = fasesGrafico.map(f=>f.lbl.split('\n'));
+  const fasesValores = fasesGrafico.map(f=>{
+    if(f.atual) return LC.LANDED;
+    const ipiUse = f.ipi===null ? (parseFloat(document.getElementById('ref-ipi')?.value)||0) : f.ipi;
+    return custoFase(f.cbs, f.ibs, ipiUse, false);
+  });
+
+  // Cores: atual em laranja, fases em gradiente azul→dourado
+  const fasesCores = fasesGrafico.map((f,i)=> f.atual ? '#C96A1A'
+    : `rgba(${Math.round(27+(201-27)*(i/6))},${Math.round(95+(146-95)*(i/6))},${Math.round(168-(168-42)*(i/6))},0.8)`);
+
+  charts['reforma-fases'] = new Chart(document.getElementById('ch-reforma-fases'),{
+    type:'bar',
+    data:{
+      labels: fasesLabels,
+      datasets:[{
+        label:'Custo Total da Importação',
+        data: fasesValores,
+        backgroundColor: fasesCores,
+        borderRadius:5, borderSkipped:false,
+      }]
+    },
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title:items=>Array.isArray(items[0].label)?items[0].label.join(' '):items[0].label,
+          label:ctx=>{
+            const base=LC.LANDED;
+            const d=ctx.raw-base;
+            const pct=base>0?((d/base)*100).toFixed(1):0;
+            return [`Custo: ${brl(ctx.raw)}`, d!==0?`vs atual: ${d>0?'+':''}${brl(d)} (${d>0?'+':''}${pct}%)`:'Sistema vigente'];
+          }
+        }}
+      },
+      scales:{
+        y:{ticks:{callback:v=>brlShort(v),font:{size:10}}, grid:{color:'rgba(0,0,0,.04)'}, title:{display:true,text:'Custo Total (R$)',font:{size:10}}},
+        x:{ticks:{font:{size:9.5}}, grid:{display:false}}
+      }
+    }
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -7276,7 +7744,7 @@ function renderCustoFinal(){
     {l:'IPI',                        v:LC.IPI,  base:'CIF+II', alq:'Art.47 CTN · Dec. 11.158/2022'},
     {l:'PIS-Importação',             v:LC.PIS,  base:'CIF', alq:'Lei 10.865/2004 art.7º I'},
     {l:'COFINS-Importação',          v:LC.COF,  base:'CIF', alq:'Lei 10.865/2004 art.7º I'},
-    ...(isM&&LC.AFRMM>0?[{l:'AFRMM', v:LC.AFRMM, base:'Frete BRL × 8%', alq:'Lei 10.893/2004 art.6º'}]:[]),
+    ...(isM?[{l:(()=>{const r=typeof afrmmRegime!=='undefined'?afrmmRegime:'integral';return 'AFRMM'+(r!=='integral'?' ('+(r==='suspensao'?'Susp.':'Isen.')+')':'');})(),v:LC.AFRMM,base:'Frete BRL × 8%',alq:((typeof afrmmRegime!=='undefined'&&afrmmRegime!=='integral')?('Regime: '+(afrmmRegime==='suspensao'?'Suspensão — Drawback/RECOF':'Isenção')):'Lei 10.893/2004 art.6º')}]:[]),
     {l:'ICMS — por dentro',          v:LC.ICMS, base:'Soma/(1−alíq)', alq:'LC 87/1996 art.13 §1º II "a"'},
     ...(LC.SIS>0?[{l:'Taxa DUIMP / SISCOMEX', v:LC.SIS, base:'Por DI — faixas', alq:'Portaria ME 4.131/2021'}]:[]),
   ].filter(r=>r.v>0);
@@ -7427,10 +7895,13 @@ function renderCustoFinal(){
             <td class="nr">${brl(LC.COF)}</td>
             <td class="nr">${pctFmt((LC.COF/LC.LANDED)*100)}</td>
             <td class="nr">${regObs('cof') || '<span style="font-size:.65rem;color:var(--gray-400)">Lei 10.865/2004 art. 7º I</span>'}</td></tr>
-          ${isM&&LC.AFRMM>0?`<tr class="sub"><td>  AFRMM</td>
+          ${isM?`<tr class="sub"><td>  AFRMM</td>
             <td class="nr">${brl(LC.AFRMM)}</td>
             <td class="nr">${pctFmt((LC.AFRMM/LC.LANDED)*100)}</td>
-            <td class="nr"><span style="font-size:.65rem;color:var(--gray-400)">Lei 10.893/2004 art. 6º — 8% s/ frete</span></td></tr>`:''}
+            <td class="nr">${(typeof afrmmRegime==='undefined'||afrmmRegime==='integral')
+              ? '<span style="font-size:.65rem;color:var(--gray-400)">Lei 10.893/2004 art. 6º — 8% s/ frete</span>'
+              : '<span style="font-size:.65rem;font-weight:600;padding:1px 6px;border-radius:8px;background:rgba(201,146,42,.1);color:#9A6D00">'+(afrmmRegime==='suspensao'?'Suspensão — Drawback/RECOF':'Isenção')+'</span>'
+            }</td></tr>`:''}
           <tr class="sub"><td>  ICMS</td>
             <td class="nr">${brl(LC.ICMS)}</td>
             <td class="nr">${pctFmt((LC.ICMS/LC.LANDED)*100)}</td>
@@ -7487,20 +7958,10 @@ function gerarPDFFinal(){
   if(!LC.LANDED){ alert('Preencha os dados antes de gerar o PDF.'); return; }
   renderCustoFinal();
   setTimeout(()=>{
-    const style = document.createElement('style');
-    style.id = '__print_style';
-    style.textContent = `
-      @media print {
-        body > *:not(.app-wrap) { display:none!important; }
-        .app-wrap > *:not(#tab-final) { display:none!important; }
-        #tab-final { display:block!important; }
-        .btn-row, button { display:none!important; }
-        .rel-page { box-shadow:none!important; border:none!important; padding:1.5rem!important; }
-      }`;
-    document.head.appendChild(style);
-    window.print();
-    setTimeout(()=>{ const s=document.getElementById('__print_style'); if(s)s.remove(); }, 1000);
-  }, 300);
+    const ref = document.getElementById('refNum')?.value || '';
+    const win = abrirRelatorioEmJanela('custo-final-corpo', 'Custo Final '+ref+' — ImportCalc Brasil');
+    if(win) setTimeout(()=>{ win.focus(); win.print(); }, 600);
+  }, 250);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -7752,9 +8213,120 @@ function gerarPDF(){
 // ══════════════════════════════════════════════════════════════════
 // GERAR EXCEL — planilha completa com abas
 // ══════════════════════════════════════════════════════════════════
+// Download robusto de XLSX via Blob + anchor (funciona em todos os navegadores)
+function _baixarXLSX(wb, filename){
+  try {
+    const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    const blob  = new Blob([wbout], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+  } catch(e){
+    console.error('Erro ao baixar Excel:', e);
+    alert('Erro ao gerar o Excel: '+e.message);
+  }
+}
+
+// Garante que a biblioteca XLSX esteja carregada (tenta CDN alternativo se preciso)
+function _garantirXLSX(callback){
+  if(typeof XLSX !== 'undefined'){ callback(); return; }
+  // Tentar carregar do CDN alternativo
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+  s.onload = ()=>{ if(typeof XLSX !== 'undefined') callback(); else alert('Não foi possível carregar a biblioteca de Excel. Verifique sua conexão com a internet.'); };
+  s.onerror = ()=>{ alert('Não foi possível carregar a biblioteca de Excel. Verifique sua conexão com a internet.'); };
+  document.head.appendChild(s);
+}
+
+// Dispatcher — detecta aba ativa e exporta o Excel correspondente
 function gerarExcel(){
+  const abas = ['dados','itens','desp','result','final','reforma','graficos'];
+  const abaAtiva = abas.find(a=>{
+    const el = document.getElementById('tab-'+a);
+    return el && el.style.display !== 'none';
+  });
+  if(abaAtiva === 'reforma'){ gerarExcelReforma(); return; }
+  gerarExcelPadrao();
+}
+
+// ── Excel da aba Reforma Tributária ──
+function gerarExcelReforma(){
+  if(!LC.LANDED){ alert('Preencha os dados antes de exportar.'); return; }
+  if(typeof XLSX === 'undefined'){ _garantirXLSX(gerarExcelReforma); return; }
+
+  const ref  = document.getElementById('refNum')?.value||'—';
+  const data = new Date().toLocaleDateString('pt-BR');
+  const isM  = LC.isM;
+  const cbs_p= parseFloat(document.getElementById('ref-cbs')?.value)||9.9;
+  const ibs_p= parseFloat(document.getElementById('ref-ibs')?.value)||17.7;
+  const ipi_p= parseFloat(document.getElementById('ref-ipi')?.value)||0;
+
+  // Recalcular totais reforma
+  let tII=0,tIPI=0,tCBS=0,tAFRMM=0,tIBS=0,tDUMP=0;
+  if(itens.length>0){
+    itens.forEach(it=>{
+      const r=getRateioItem(it), a=alqItem(it), dui=calcDUIMP_item(it);
+      const imp=calcImpostosReforma(r.cif,r.frete,a.ii_p,a.ipi_p,isM,dui);
+      tII+=imp.II; tIPI+=imp.IPI; tCBS+=imp.CBS; tAFRMM+=imp.AFRMM; tIBS+=imp.IBS; tDUMP+=imp.DUIMP;
+    });
+  } else {
+    const imp=calcImpostosReforma(LC.CIF,LC.fr_brl||0,LC.CIF>0?(LC.II/LC.CIF)*100:0,0,isM,LC.SIS||0);
+    tII=imp.II;tIPI=imp.IPI;tCBS=imp.CBS;tAFRMM=imp.AFRMM;tIBS=imp.IBS;tDUMP=imp.DUIMP;
+  }
+  const totTribR = tII+tIPI+tCBS+tAFRMM+tIBS+tDUMP;
+  const landedR  = LC.CIF + totTribR + LC.DESP;
+  const wb = XLSX.utils.book_new();
+
+  // Aba 1: Comparativo
+  const comp = [
+    ['IMPORTCALC BRASIL — SIMULAÇÃO REFORMA TRIBUTÁRIA (EC 132/2023)'],
+    ['Referência:', ref, '', 'Data:', data],
+    ['CBS %:', cbs_p, 'IBS %:', ibs_p, 'IPI %:', ipi_p],
+    [],
+    ['COMPARATIVO — SISTEMA ATUAL × REFORMA'],
+    ['Componente','Sistema Atual (R$)','Reforma (R$)','Diferença (R$)'],
+    ['CIF — Base Tributável', LC.CIF, LC.CIF, 0],
+    ['II', LC.II, tII, tII-LC.II],
+    ['IPI', LC.IPI, tIPI, tIPI-LC.IPI],
+    ['PIS', LC.PIS, 0, -LC.PIS],
+    ['COFINS', LC.COF, 0, -LC.COF],
+    ['CBS (ex-PIS/COFINS)', 0, tCBS, tCBS],
+  ];
+  if(isM) comp.push(['AFRMM', LC.AFRMM, tAFRMM, tAFRMM-LC.AFRMM]);
+  comp.push(['ICMS', LC.ICMS, 0, -LC.ICMS]);
+  comp.push(['IBS (ex-ICMS)', 0, tIBS, tIBS]);
+  if(LC.SIS>0||tDUMP>0) comp.push(['Taxa DUIMP', LC.SIS||0, tDUMP, tDUMP-(LC.SIS||0)]);
+  comp.push(['Total Tributos', LC.IMP_TOTAL, totTribR, totTribR-LC.IMP_TOTAL]);
+  comp.push(['Total Despesas', LC.DESP, LC.DESP, 0]);
+  comp.push(['= CUSTO TOTAL', LC.LANDED, landedR, landedR-LC.LANDED]);
+
+  const ws1 = XLSX.utils.aoa_to_sheet(comp);
+  ws1['!cols']=[{wch:30},{wch:20},{wch:20},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,'Comparativo Reforma',ws1);
+
+  // Aba 2: Tributos por item (reforma)
+  if(itens.length>0){
+    const hdr=['#','Descrição','NCM','CIF (R$)','II (R$)','IPI (R$)','CBS (R$)', ...(isM?['AFRMM (R$)']:[]),'IBS (R$)','DUIMP (R$)','Total (R$)'];
+    const rows=[hdr];
+    itens.forEach((it,i)=>{
+      const r=getRateioItem(it), a=alqItem(it), dui=calcDUIMP_item(it);
+      const imp=calcImpostosReforma(r.cif,r.frete,a.ii_p,a.ipi_p,isM,dui);
+      rows.push([i+1,it.desc||'',it.ncm||'',r.cif,imp.II,imp.IPI,imp.CBS, ...(isM?[imp.AFRMM]:[]),imp.IBS,imp.DUIMP,imp.total]);
+    });
+    const ws2=XLSX.utils.aoa_to_sheet(rows);
+    ws2['!cols']=hdr.map((_,i)=>({wch:i<2?28:14}));
+    XLSX.utils.book_append_sheet(wb,'Tributos Reforma por Item',ws2);
+  }
+
+  _baixarXLSX(wb, `ImportCalc_Reforma_${ref.replace(/[^a-zA-Z0-9\-]/g,'_')}_${data.replace(/\//g,'-')}.xlsx`);
+}
+
+function gerarExcelPadrao(){
   if(!LC.LANDED){ alert('Preencha os dados da simulação antes de exportar.'); return; }
-  if(typeof XLSX === 'undefined'){ alert('Biblioteca XLSX não carregada. Verifique a conexão.'); return; }
+  if(typeof XLSX === 'undefined'){ _garantirXLSX(gerarExcelPadrao); return; }
 
   const ref  = document.getElementById('refNum')?.value||'—';
   const data = new Date().toLocaleDateString('pt-BR');
@@ -7847,7 +8419,7 @@ function gerarExcel(){
     XLSX.utils.book_append_sheet(wb,'Despesas Operacionais',ws3);
   }
 
-  XLSX.writeFile(wb,`ImportCalc_${ref.replace(/[^a-zA-Z0-9\-]/g,'_')}_${data.replace(/\//g,'-')}.xlsx`);
+  _baixarXLSX(wb, `ImportCalc_${ref.replace(/[^a-zA-Z0-9\-]/g,'_')}_${data.replace(/\//g,'-')}.xlsx`);
 }
 
 
